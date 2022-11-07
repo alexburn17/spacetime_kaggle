@@ -8,33 +8,48 @@ from itertools import accumulate
 import string
 
 # todo: pass timeObj down to netcdf maker for if state
-def make_cube(data = None, fileName = None, organizeFiles="filestotime", organizeBands="bandstotime", varNames=None, timeObj=None):
+def make_cube(data = None, fileName = None, organizeFiles="filestotime", organizeBands="bandstotime", varNames=None, timeObj=None, inMemory = "auto"):
 
     if "file_object" in str(type(data)):
+
 
         # merge gdal datasets to one interum gdal cube
         dataList = []
         tempMat = []
         numBands = []
         time =  timeObj
+        sizes = data.get_file_size()
 
         # deal with no user defined time vector with both file structures
         if type(timeObj) == type(None):
 
             # set up time dimension
             if organizeFiles == "filestotime" and organizeBands == "bandstotime":
-                time = np.arange(len(data.get_time()[0]) * len(data.get_time()))
+                timeList = data.get_time()
+                time = np.arange(len(timeList[0]) * len(timeList)) + 1
+                index = len(timeList)
             if organizeFiles == "filestotime" and organizeBands == "bandstovar":
-                time = np.arange(len(data.get_time()))
+                timeList = data.get_time()
+                time = np.arange(len(timeList)) + 1
+                index = len(timeList)
             if organizeFiles == "filestovar" and organizeBands == "bandstotime":
-                time = np.arange(len(data.get_time()[0]))
+                timeList = data.get_time()
+                time = np.arange(len(timeList[0])) + 1
+                index = len(timeList)
             if organizeFiles == "filestovar" and organizeBands == "bandstovar":
-                time = np.arange(1)
-                numVars = len(np.arange(len(data.get_time()[0]) * len(data.get_time())))
+                timeList = data.get_time()
+                time = np.arange(1) + 1
+                numVars = len(np.arange(len(timeList[0]) * len(timeList)))
+                index = len(timeList)
+        else:
+            index = len(data.get_time())
 
-        for i in range(len(data.get_time())):
+        array = data.get_data_array()
 
-            tempArray = data.get_data_array()[i]
+        for i in range(index):
+
+            tempArray = array[i] # this is the big time sink in the program
+
             obj = data.get_GDAL_data()[i]
             bandNum = data.get_band_number()[i]
 
@@ -58,7 +73,7 @@ def make_cube(data = None, fileName = None, organizeFiles="filestotime", organiz
             gdalCube = cube_meta(fullCube) # make gdal cube to query data and metadata
 
             preCube = write_netcdf(cube=gdalCube, dataset=outMat, fileName=fileName, organizeFiles = "filestotime", organizeBands = "bandstotime", timeObj = time) # make netcdf4 cube
-            cubeObj = cube(preCube, fileStruc = "filestotime", timeObj=time) # make a cube object
+            cubeObj = cube(preCube, fileStruc = "filestotime", timeObj=time, inMemory = inMemory, fileSize = sizes) # make a cube object
 
         if organizeFiles == "filestotime" and organizeBands == "bandstovar":
 
@@ -87,10 +102,11 @@ def make_cube(data = None, fileName = None, organizeFiles="filestotime", organiz
             dataOut = split_list(arranged, [1]*len(varNames), squeeze = True)
 
             preCube = write_netcdf(cube=gdalCube[0], dataset=dataOut, fileName=fileName, organizeFiles = "filestovar", organizeBands="bandstotime", vars=varNames, timeObj = time) # make netcdf4 cube
-            cubeObj = cube(preCube, fileStruc = "filestovar", names=varNames, timeObj=time)
+            cubeObj = cube(preCube, fileStruc = "filestovar", names=varNames, timeObj=time, inMemory = inMemory, fileSize = sizes)
 
         # if files are each one variable
         if organizeFiles == "filestovar" and organizeBands == "bandstovar":
+
 
             outMat = np.dstack(tempMat) # stack data arrays
 
@@ -117,30 +133,34 @@ def make_cube(data = None, fileName = None, organizeFiles="filestotime", organiz
             dataOut = split_list(arranged, [1]*len(varNames), squeeze = False)
 
             preCube = write_netcdf(cube=gdalCube[0], dataset=dataOut, fileName=fileName, organizeFiles = "filestovar", organizeBands="bandstovar", vars=varNames, timeObj = time) # make netcdf4 cube
-            cubeObj = cube(preCube, fileStruc = "filestovar", names=varNames, timeObj=time)
+            cubeObj = cube(preCube, fileStruc = "filestovar", names=varNames, timeObj=time, inMemory = inMemory, fileSize = sizes)
 
 
         # if files are each one variable
-        if organizeFiles == "filestovar" and organizeBands == "bandstotime":
+        if organizeFiles == "filestovar" and organizeBands == "bandstotime": # 0.037 seconds
 
             # merge data and metadata
-            metaDataMerge = merge_layers(metaDataSplit, raster=True)
+            metaDataMerge = merge_layers(metaDataSplit, raster=True) # 0.0029 seconds
 
-            dataMerge = merge_layers(tempMat, raster=False)
+            dataMerge = merge_layers(tempMat, raster=False) # 0.0034 seconds
 
             # take each vrt object and make cube meta object
-            gdalCube = []
+
+            gdalCube = [] # 0.000087 seconds
             for i in range(len(metaDataMerge)):
                 gdalCube.append(cube_meta(metaDataMerge[i]))
 
+
             # if no var names given generate numbers
-            if varNames == None:
+            if varNames == None: # 0.0000021
                 names = list(range(len(gdalCube)))
                 varNames = list(map(str, names))
 
-
+            # 0.0239 seconds SECOND SLOWEST SECTION
             preCube = write_netcdf(cube=gdalCube[0], dataset=dataMerge, fileName=fileName, organizeFiles = "filestovar", organizeBands="bandstotime", vars=varNames, timeObj = time) # make netcdf4 cube
-            cubeObj = cube(preCube, fileStruc = "filestovar", names=varNames, timeObj=time)
+
+            # 0.0000062 seconds
+            cubeObj = cube(preCube, fileStruc = "filestovar", names=varNames, timeObj=time, inMemory= inMemory, fileSize = sizes)
 
     # if the object is already a cube and needs to be written back out
     else:
@@ -150,14 +170,15 @@ def make_cube(data = None, fileName = None, organizeFiles="filestotime", organiz
         lon = data.get_lon()
         array = data.get_data_array()
         varNames = data.get_var_names()
+        sizes = data.get_file_size()
 
         if type(varNames) != type(None):
             preCube = write_netcdf(cube=data, dataset=array, fileName=fileName, organizeFiles = "filestovar",organizeBands="bandstotime", vars=varNames, timeObj = time) # make netcdf4 cube
-            cubeObj = cube(preCube, fileStruc = "filestovar", names=varNames, timeObj=time)
+            cubeObj = cube(preCube, fileStruc = "filestovar", names=varNames, timeObj=time, fileSize = sizes)
 
         else:
             preCube = write_netcdf(cube=data, dataset=array, fileName=fileName, organizeFiles = "filestotime", organizeBands="bandstotime" ,timeObj = time) # make netcdf4 cube
-            cubeObj = cube(preCube, fileStruc = "filestotime", timeObj=time)
+            cubeObj = cube(preCube, fileStruc = "filestotime", timeObj=time, inMemory = inMemory, fileSize = sizes)
 
 
     return cubeObj
@@ -177,8 +198,6 @@ def split_list(input, index, squeeze=False):
         out = [np.squeeze(input[x - y: x]) for x, y in zip(
             accumulate(index), index)]
 
-
-
     return out
 #################################################
 
@@ -193,8 +212,7 @@ def merge_layers(data, raster=False):
 
         if raster == False:
 
-            subCube = np.dstack(data[i]) # these indexes are reversed between the two data sets
-            subCube = np.moveaxis(subCube, 2, 0)
+            subCube = np.stack(data[i]) # stack datasets in list
 
         if raster == True:
 
@@ -203,5 +221,7 @@ def merge_layers(data, raster=False):
         subCubeList.append(subCube)
 
     return subCubeList
+
+
 #################################################
 

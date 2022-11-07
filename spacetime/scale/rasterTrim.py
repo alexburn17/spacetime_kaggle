@@ -89,6 +89,6 @@ def raster_trim(data = None, method = "intersection", ul = None, lr = None, shap
 
         ###################################################################################################
 
-    outObj = file_object(outList)
+    outObj = file_object(outList, data.get_file_size())
 
     return outObj

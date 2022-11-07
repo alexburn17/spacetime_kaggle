@@ -6,9 +6,9 @@ import netCDF4 as nc
 
 class file_object(object):
 
-    def __init__(self, dataList):
+    def __init__(self, dataList, sizes):
 
-        # Initialize an emty storage matrix
+        # Initialize an empty storage matrix
         objMat = [[0] * len(dataList) for i in range( 4 )]
 
         # create a list of rasters
@@ -33,6 +33,7 @@ class file_object(object):
         # save as spacetime object
         self.spacetimeObject = objMat
 
+        self.fileSize = sizes
 
     # returns a list of gdal or netcdf4 objects
     def get_GDAL_data(self):
@@ -233,8 +234,12 @@ class file_object(object):
         out = self.cubeObj.variables["spatial_ref"]
         return out
 
+    def get_file_size(self):
 
-    def get_data_array(self):
+        return self.fileSize
+
+
+    def get_data_array(self): # this is slow (SPEED IT UP)
 
         outList = []
 
@@ -245,15 +250,19 @@ class file_object(object):
 
             for j in range(self.get_band_number()[i]):
 
+                import time
+                start = time.time()
+
                 band = obj.GetRasterBand(j+1).ReadAsArray()
                 tempMat.append(band)
+
+                end = time.time()
+                #print(end - start)
 
             outMat = np.stack(tempMat, axis=2)
             outList.append(outMat)
 
         return outList
-
-
 
 
 

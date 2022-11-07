@@ -15,11 +15,9 @@ def write_netcdf(cube, dataset, fileName, organizeFiles, organizeBands, vars=Non
     lats = ds.createVariable('lat', 'f4', ('lat',))
     lons = ds.createVariable('lon', 'f4', ('lon',))
 
-
     #value.units = 'My Units'
     lons.units = cube.get_units()
     lats.units = cube.get_units()
-
 
     ds.variables['lat'][:] = cube.get_lat()
     ds.variables['lon'][:] = cube.get_lon()
@@ -47,7 +45,6 @@ def write_netcdf(cube, dataset, fileName, organizeFiles, organizeBands, vars=Non
                 ds.variables[vars[i]][:] = dataset[i]
 
 
-
         if str(type(timeObj)) == "<class 'numpy.ndarray'>":
 
             ds.variables['time'][:] = timeObj
@@ -58,7 +55,7 @@ def write_netcdf(cube, dataset, fileName, organizeFiles, organizeBands, vars=Non
             timeObj = timeObj.to_numpy()
 
             timedelta = timeObj-timeObj[0]
-            seconds = timedelta.astype('timedelta64[s]').astype(np.int32)
+            seconds = np.divide(timedelta, 1e+9)
             ds.variables['time'][:] = seconds
 
     ############################################################################################
@@ -83,11 +80,10 @@ def write_netcdf(cube, dataset, fileName, organizeFiles, organizeBands, vars=Non
         else:
             time.units = "seconds since " + str(timeObj.to_numpy()[0])
             timeObj = timeObj.to_numpy()
-
             timedelta = timeObj-timeObj[0]
-            seconds = timedelta.astype('timedelta64[s]').astype(np.int32)
-            ds.variables['time'][:] = seconds
+            seconds = np.divide(timedelta, 1e+9)
 
+            ds.variables['time'][:] = seconds
 
     ############################################################################################
 

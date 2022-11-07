@@ -6,17 +6,20 @@ import netCDF4 as nc
 import re
 from spacetime.operations.time import cube_time, return_time
 import xarray as xr
+import psutil
 
 
 class cube(object):
 
-    def __init__(self, inputCube, fileStruc, timeObj, names=None):
+    def __init__(self, inputCube, fileStruc, timeObj, fileSize, names=None, inMemory = "auto"):
 
         # save as barracuda object
         self.cubeObj = inputCube
         self.fileStruc = fileStruc
         self.names = names
         self.timeObj = timeObj
+        self.inMemory = inMemory
+        self.sizes = fileSize
 
         if self.fileStruc == "filestovar":
             self.ind = self.names[0]
@@ -31,6 +34,13 @@ class cube(object):
 
     def get_GDAL_data(self):
         return self.cubeObj
+
+    def get_file_size(self):
+        if "class 'float'" in str(type(self.sizes)):
+            out = self.sizes
+        else:
+            out = sum(self.sizes)
+        return out
 
     def get_units(self):
         out = self.cubeObj.variables['lon'].units
@@ -124,13 +134,25 @@ class cube(object):
                 index = [self.names.index(x) for x in variables]
                 outMat = out[index,:,:,:]
 
+        if self.inMemory == False:
+            outMat = outMat
+
+        elif self.inMemory == True:
+            outMat = outMat.load()
+
+        elif self.inMemory == "auto":
+            RAM = psutil.virtual_memory().total / (1024.0 ** 3)
+            fileSize = self.get_file_size()
+
+            if fileSize > (.7 * RAM):
+                outMat = outMat
+            else:
+                outMat = outMat.load()
 
         return outMat
-
 
     def get_shapeval(self):
 
         ds = self.get_data_array()
         shapeVal = len(ds.shape)
-
         return shapeVal

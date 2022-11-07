@@ -2,6 +2,7 @@ import netCDF4 as nc
 import numpy as np
 from spacetime.objects.cubeObject import cube
 from spacetime.operations.time import cube_time, return_time
+import os
 
 def load_cube(file):
 
@@ -9,7 +10,10 @@ def load_cube(file):
     ds = nc.Dataset(file)
 
     # get time
-    time = return_time(ds.variables["time"])
+    if "units: seconds since" in str(ds.variables["time"]):
+        time = return_time(ds.variables["time"])
+    else:
+        time = ds.variables["time"][:]
 
     # get var names
     vars = list(ds.variables.keys())
@@ -22,8 +26,9 @@ def load_cube(file):
     else:
         struc = "filestotime"
 
+    fileSize = os.path.getsize(file) * 0.000001
 
-    cube_ds = cube(ds, fileStruc = struc, names=varNames, timeObj=time)
+    cube_ds = cube(ds, fileStruc = struc, names=varNames, timeObj=time, fileSize = fileSize)
 
     return cube_ds
 
