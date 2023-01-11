@@ -2,6 +2,7 @@ import pandas as pd
 import netCDF4 as nc
 import numpy as np
 from spacetime.objects.interumCube import interum_cube
+import xarray as xr
 
 
 ########################################################################################################################
@@ -121,4 +122,49 @@ def scale_time(cube, scale, method):
          quit() # exit program and display message when no file names provided
     return ret
 
-########################################################################################################################
+####
+
+def expand_time(cube, target_time, starting_scale = "month", target_scale = "day"):
+
+    startTime = cube.get_time()
+    array = cube.get_data_array()
+    numVars = len(array.shape)
+
+    if starting_scale == "month" and target_scale == "day":
+
+        # number of days in each month
+        unique, counts = np.unique(target_time.month, return_counts=True)
+
+        # expand input cube by counts of each month
+        outList = []
+        for t in range(len(counts)):
+            outList.append(np.tile(array[t,:,:], (counts[t], 1, 1)))
+
+        # concatenate the list of arrays into one array
+        out = np.concatenate(outList, axis = 0)
+
+        # make into an xarray variable
+        if numVars == 3:
+
+            outMat = xr.DataArray(data=out, dims=["time", "lat", "lon"], coords=dict(
+               lon=(["lon"], cube.get_lon()),
+               lat=(["lat"], cube.get_lat()),
+               time=target_time))
+
+        if numVars > 3:
+
+            outList = []
+            for i in range(len(self.names)):
+                outList.append(self.cubeObj.variables[self.names[i]][:])
+
+            intDS = np.array(outList)
+
+            out = xr.DataArray(data=intDS, dims=["variables", "time", "lat", "lon"], coords=dict(
+                  variables = (["variables"], self.names),
+                  lon=(["lon"], self.get_lon()),
+                  lat=(["lat"], self.get_lat()),
+                  time=self.get_time()))
+
+
+        ret = interum_cube(cube = cube, array = outMat)
+        return(ret)

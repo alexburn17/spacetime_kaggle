@@ -1,6 +1,7 @@
 from osgeo import gdal
 from spacetime.objects.fileObject import file_object
 import numpy as np
+from spacetime.input.readData import read_data
 
 
 ######################################################################################################################
@@ -19,7 +20,7 @@ import numpy as np
 # OUTPUT:
 # It outputs a list of rescaled and geospatialy aligned rasters
 ######################################################################################################################
-def raster_align(data=None, resolution="min", SRS=4326, noneVal=None, algorithm="near"):
+def raster_align(data=None, resolution="min", SRS=4326, noneVal=None, algorithm="near", template = None):
 
     if SRS == None:
         SRS_code = data.get_epsg_code()[0]
@@ -45,6 +46,7 @@ def raster_align(data=None, resolution="min", SRS=4326, noneVal=None, algorithm=
         ps = gdal.Warp('', dataMat[0][i], dstSRS=SRS_code, format='VRT')
         reso.append(ps.GetGeoTransform()[1])
 
+
     # pick the resolution
     if resolution == "max":
         resolution = np.min(reso)
@@ -53,11 +55,10 @@ def raster_align(data=None, resolution="min", SRS=4326, noneVal=None, algorithm=
     else:
         resolution = resolution
 
-
     # do transformation and alignment
     for i in range(objSize):
         dataMat[1][i] = gdal.Warp('', dataMat[0][i], targetAlignedPixels=True, dstSRS=SRS_code, format='VRT',
-        xRes=resolution, yRes=-resolution, dstNodata=noneVal, resampleAlg=algorithm) # format='MEM'
+        xRes=resolution, yRes=-resolution, dstNodata=noneVal, resampleAlg=algorithm)
 
     #print((dataMat[1][0]).GetRasterBand(1).ReadAsArray())
     # make a cube object

@@ -16,21 +16,29 @@ def write_netcdf(cube, dataset, fileName, organizeFiles, organizeBands, vars=Non
     lons = ds.createVariable('lon', 'f4', ('lon',))
 
     #value.units = 'My Units'
-    lons.units = cube.get_units()
-    lats.units = cube.get_units()
+    lons.units = "degrees_east" #cube.get_units()
+    lons.standard_name = "longitude"
+    lons.axis = "X"
+
+    lats.units = "degrees_north" #cube.get_units()
+    lats.standard_name = "latitude"
+    lats.axis = "Y"
 
     ds.variables['lat'][:] = cube.get_lat()
     ds.variables['lon'][:] = cube.get_lon()
     crs = ds.createVariable('spatial_ref', 'i4')
     crs.spatial_ref = cube.get_spatial_ref()
 
+
     # each file is a variable
     ############################################################################################
+    numVars = len(dataset[0].shape)
+
     if organizeFiles == "filestovar" or organizeBands=="bandstovar":
         
         for i in range(len(vars)):
 
-            value = ds.createVariable(vars[i], 'f4', ('lat', 'lon', 'time',))
+            value = ds.createVariable(vars[i], 'f4', ('time', 'lat', 'lon',))
             value.code =  cube.get_epsg_code()
 
             if cube.get_nodata_value() != None:
@@ -38,11 +46,15 @@ def write_netcdf(cube, dataset, fileName, organizeFiles, organizeBands, vars=Non
             else:
                 value.missing = -9999
 
+
             # is it a list of arrays or a dictionary (XARRAY)
             if "<class 'dict'>" in str(type(dataset)):
-                ds.variables[vars[i]][:] = dataset[vars[i]]
+                ds.variables[vars[i]][:] = np.moveaxis(dataset[vars[i]], 2, 0)
             else:
-                ds.variables[vars[i]][:] = dataset[i]
+                if numVars < 3:
+                    ds.variables[vars[i]][:] = dataset[i]
+                else:
+                    ds.variables[vars[i]][:] = np.moveaxis(dataset[i], 2, 0)
 
 
         if str(type(timeObj)) == "<class 'numpy.ndarray'>":
@@ -65,7 +77,12 @@ def write_netcdf(cube, dataset, fileName, organizeFiles, organizeBands, vars=Non
     ############################################################################################
     if organizeFiles == "filestotime" and organizeBands == "bandstotime":
 
-        value = ds.createVariable('value', 'f4', ('lat', 'lon', 'time',))
+        if 'xarray.core.dataarray.DataArray' in str(type(dataset)):
+            value = ds.createVariable('value', 'f4', ('time', 'lat', 'lon',))
+        else:
+            value = ds.createVariable('value', 'f4', ('time', 'lat', 'lon',))
+            dataset = np.moveaxis(dataset, 2, 0)
+
         value.code =  cube.get_epsg_code()
         if cube.get_nodata_value() != None:
             value.missing = cube.get_nodata_value()

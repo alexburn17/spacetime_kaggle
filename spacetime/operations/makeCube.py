@@ -13,6 +13,8 @@ def make_cube(data = None, fileName = None, organizeFiles="filestotime", organiz
     if "file_object" in str(type(data)):
 
 
+
+
         # merge gdal datasets to one interum gdal cube
         dataList = []
         tempMat = []
@@ -43,10 +45,12 @@ def make_cube(data = None, fileName = None, organizeFiles="filestotime", organiz
                 index = len(timeList)
         else:
             index = len(data.get_time())
+        print("get array")
 
         array = data.get_data_array()
 
         for i in range(index):
+            print(i)
 
             tempArray = array[i] # this is the big time sink in the program
 
@@ -64,6 +68,8 @@ def make_cube(data = None, fileName = None, organizeFiles="filestotime", organiz
         # split meta data cube and data by number of bands
         metaDataSplit = split_list(input = dataList, index = numBands)
         dataSplit = split_list(input = tempMat, index = numBands)
+
+
 
         # if files are one variable to stack
         if organizeFiles == "filestotime" and organizeBands == "bandstotime":
@@ -139,6 +145,7 @@ def make_cube(data = None, fileName = None, organizeFiles="filestotime", organiz
         # if files are each one variable
         if organizeFiles == "filestovar" and organizeBands == "bandstotime": # 0.037 seconds
 
+
             # merge data and metadata
             metaDataMerge = merge_layers(metaDataSplit, raster=True) # 0.0029 seconds
 
@@ -155,6 +162,8 @@ def make_cube(data = None, fileName = None, organizeFiles="filestotime", organiz
             if varNames == None: # 0.0000021
                 names = list(range(len(gdalCube)))
                 varNames = list(map(str, names))
+
+
 
             # 0.0239 seconds SECOND SLOWEST SECTION
             preCube = write_netcdf(cube=gdalCube[0], dataset=dataMerge, fileName=fileName, organizeFiles = "filestovar", organizeBands="bandstotime", vars=varNames, timeObj = time) # make netcdf4 cube

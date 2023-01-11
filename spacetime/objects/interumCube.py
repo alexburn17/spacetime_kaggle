@@ -1,6 +1,7 @@
 import numpy as np
 import netCDF4 as nc
 import pandas as pd
+import sys
 
 
 class interum_cube(object):
@@ -26,6 +27,12 @@ class interum_cube(object):
 
     def get_units(self):
         out = self.cubeObj.variables['lon'].units
+        return out
+
+    def get_file_size(self):
+
+        out = self.array.size
+
         return out
 
     def get_band_number(self):
@@ -82,3 +89,9 @@ class interum_cube(object):
     def get_var_names(self):
         out = self.names
         return out
+
+    def get_shapeval(self):
+
+        ds = self.get_data_array()
+        shapeVal = len(ds.shape)
+        return shapeVal

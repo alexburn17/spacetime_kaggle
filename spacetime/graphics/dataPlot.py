@@ -215,7 +215,7 @@ def plot_spatial(cube, df) -> go.Figure:
     fig.update_layout(
         mapbox_style='carto-darkmatter',
         mapbox_zoom=3,
-        mapbox_center={'lat': coords[0], 'lon': coords[1]},
+        mapbox_center={'lat': float(coords[0]), 'lon': float(coords[1])},
     )
 
     fig = update_fig_layout(fig)

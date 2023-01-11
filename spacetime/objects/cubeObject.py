@@ -36,7 +36,7 @@ class cube(object):
         return self.cubeObj
 
     def get_file_size(self):
-        if "class 'float'" in str(type(self.sizes)):
+        if "class 'float'" in str(type(self.sizes)) or "int" in str(type(self.sizes)):
             out = self.sizes
         else:
             out = sum(self.sizes)
@@ -108,7 +108,7 @@ class cube(object):
         if self.fileStruc == "filestotime":
             out = self.cubeObj.variables[self.ind][:]
 
-            outMat = xr.DataArray(data=out, dims=["lat", "lon", "time"], coords=dict(
+            outMat = xr.DataArray(data=out, dims=["time", "lat", "lon"], coords=dict(
                lon=(["lon"], self.get_lon()),
                lat=(["lat"], self.get_lat()),
                time=self.get_time()))
@@ -121,7 +121,7 @@ class cube(object):
 
             intDS = np.array(outList)
 
-            out = xr.DataArray(data=intDS, dims=["variables" ,"lat", "lon", "time"], coords=dict(
+            out = xr.DataArray(data=intDS, dims=["variables", "time", "lat", "lon"], coords=dict(
                   variables = (["variables"], self.names),
                   lon=(["lon"], self.get_lon()),
                   lat=(["lat"], self.get_lat()),
